@@ -1,4 +1,12 @@
 # ⚡ AutoAudit Agent
+
+ 
+## Live Demo
+ 
+👉 [**Try AutoAudit Agent →**](https://svc-mp2liy5a3rvyntyc.buildwithlocus.com/)
+
+---
+ 
  
 > **The SEO agent that doesn't write reports. It ships fixes.**
  
@@ -100,11 +108,7 @@ No. The crawler is custom-built. The impact-ranking model is trained on 2 years 
 Yes. One click in settings. No email, no exit interview, no "are you sure" three times. Cancel mid-month and you keep access through the period.
  
 ---
- 
-## Live Demo
- 
-👉 [**Try AutoAudit Agent →**](https://svc-mp2liy5a3rvyntyc.buildwithlocus.com/)
- 
+
 ---
  
 ## Built With
