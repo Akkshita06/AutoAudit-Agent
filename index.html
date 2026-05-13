@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoAudit Agent — fix SEO, don't just report it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090b;
+  --bg-2:#0d0f12;
+  --line:#1a1d22;
+  --text:#eaeaea;
+  --mute:#7a8089;
+  --dim:#4a4f57;
+  --accent:#00ff9d;
+  --crit:#ff5d5d;
+  --warn:#ffc857;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter Tight',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:16px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(0,255,157,.06), transparent 50%),
+    radial-gradient(circle at 80% 40%, rgba(0,255,157,.03), transparent 50%);
+}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+h1,h2,h3,.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:500;letter-spacing:-.01em}
+a{color:inherit;text-decoration:none}
+
+/* nav */
+header{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);background:rgba(8,9,11,.7);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+.logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px}
+.logo .dot{width:8px;height:8px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent)}
+.nav nav{display:none;gap:28px;font-size:13px;color:var(--mute);font-family:'JetBrains Mono',monospace}
+.nav nav a:hover{color:var(--text)}
+@media(min-width:768px){.nav nav{display:flex}}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;border:1px solid var(--line);background:var(--bg-2);color:var(--text);cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--dim)}
+.btn-primary{background:var(--accent);color:#001a10;border-color:var(--accent)}
+.btn-primary:hover{background:#33ffb1;border-color:#33ffb1}
+
+/* hero */
+.hero{padding:80px 0 60px}
+.tag{display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mute);padding:6px 12px;border:1px solid var(--line);border-radius:999px;margin-bottom:28px}
+.tag .blink{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.3}}
+h1{font-size:clamp(2.2rem,5vw,4rem);line-height:1.05;margin-bottom:20px;font-weight:500}
+h1 .crit{color:var(--crit)}
+h1 .ok{color:var(--accent)}
+.sub{font-size:clamp(1.05rem,1.6vw,1.25rem);color:var(--mute);max-width:620px;margin-bottom:36px}
+.sub::before{content:"> ";color:var(--accent);font-family:'JetBrains Mono',monospace}
+
+/* terminal input */
+.term{
+  background:#0a0c0f;
+  border:1px solid var(--line);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 30px 80px -20px rgba(0,255,157,.08), 0 0 0 1px rgba(0,255,157,.04);
+}
+.term-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:#0d1014}
+.term-bar span{width:10px;height:10px;border-radius:50%;background:#2a2e34}
+.term-bar .title{margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mute);letter-spacing:.05em}
+.term-body{padding:18px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7}
+.term-input{display:flex;gap:8px;padding:14px 18px;border-top:1px solid var(--line);background:#0a0c0f}
+.term-input .prompt{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:14px}
+.term-input input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px}
+.term-input input::placeholder{color:var(--dim)}
+.term-input button{padding:8px 14px;background:var(--accent);color:#001a10;border:none;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;text-transform:lowercase}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .lbl{color:var(--mute);min-width:18px}
+.row .crit{color:var(--crit)}
+.row .warn{color:var(--warn)}
+.row .ok{color:var(--accent)}
+.row .fix{margin-left:auto;color:var(--dim);font-size:11px}
+.term-body .row + .row{margin-top:2px}
+.term-body .hd{color:var(--mute);margin-bottom:10px}
+.term-body .done{color:var(--accent);margin-top:14px}
+
+/* sections */
+section{padding:80px 0;border-top:1px solid var(--line)}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+h2{font-size:clamp(1.75rem,3vw,2.5rem);line-height:1.1;margin-bottom:18px;max-width:700px}
+.lede{color:var(--mute);max-width:580px;font-size:1.05rem;margin-bottom:48px}
+
+/* compare */
+.cmp{display:grid;grid-template-columns:1fr;gap:20px}
+@media(min-width:768px){.cmp{grid-template-columns:1fr 1fr;gap:24px}}
+.card{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:28px}
+.card h3{font-size:1.05rem;margin-bottom:18px;display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace}
+.card.bad h3::before{content:"✕";color:var(--crit)}
+.card.good h3::before{content:"→";color:var(--accent)}
+.card.good{border-color:rgba(0,255,157,.25);box-shadow:inset 0 0 0 1px rgba(0,255,157,.05)}
+.card ul{list-style:none}
+.card li{padding:10px 0;border-top:1px dashed var(--line);color:var(--mute);font-size:.95rem}
+.card li:first-child{border-top:none}
+.card.good li{color:var(--text)}
+.card li::before{content:"";display:inline-block;width:14px;font-family:'JetBrains Mono',monospace}
+.card.bad li::before{content:"−";color:var(--dim)}
+.card.good li::before{content:"+";color:var(--accent)}
+
+/* steps */
+.steps{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:768px){.steps{grid-template-columns:repeat(3,1fr)}}
+.step{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:24px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7}
+.step .n{color:var(--accent);font-size:11px;margin-bottom:14px;display:block}
+.step h3{font-size:1rem;color:var(--text);margin-bottom:10px;font-weight:500}
+.step p{color:var(--mute);font-family:'Inter Tight',sans-serif;font-size:.95rem}
+
+/* pricing */
+.prices{display:grid;grid-template-columns:1fr;gap:20px}
+@media(min-width:768px){.prices{grid-template-columns:1fr 1fr}}
+.price{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:32px;position:relative}
+.price.feat{border-color:var(--accent);background:linear-gradient(180deg,rgba(0,255,157,.04),transparent 60%)}
+.price .name{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--mute);margin-bottom:14px}
+.price .amt{font-family:'JetBrains Mono',monospace;font-size:2.4rem;color:var(--text);margin-bottom:6px}
+.price .amt span{font-size:1rem;color:var(--mute)}
+.price .desc{color:var(--mute);font-size:.95rem;margin-bottom:24px}
+.price ul{list-style:none;margin-bottom:28px}
+.price li{padding:8px 0;font-size:.93rem;color:var(--text);display:flex;gap:10px}
+.price li::before{content:"✓";color:var(--accent);font-family:'JetBrains Mono',monospace}
+.price .badge{position:absolute;top:18px;right:18px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);border:1px solid var(--accent);padding:4px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.1em}
+.price .btn{width:100%;justify-content:center}
+
+/* faq */
+details{border-top:1px solid var(--line);padding:20px 0}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:1rem;color:var(--text);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:20px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:1.2rem;transition:.2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{margin-top:14px;color:var(--mute);font-size:.95rem;max-width:680px}
+
+/* final */
+.final{text-align:left;padding:100px 0}
+.final h2{margin-bottom:32px}
+
+footer{border-top:1px solid var(--line);padding:40px 0;color:var(--mute);font-family:'JetBrains Mono',monospace;font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+@media (prefers-reduced-motion: no-preference){
+  .hero h1,.hero .sub,.hero .term,.hero .tag{animation:rise .7s ease-out backwards}
+  .hero .tag{animation-delay:0s}
+  .hero h1{animation-delay:.08s}
+  .hero .sub{animation-delay:.16s}
+  .hero .term{animation-delay:.24s}
+}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="logo"><span class="dot"></span>autoaudit<span style="color:var(--mute)">/agent</span></div>
+    <nav>
+      <a href="#how">how it works</a>
+      <a href="#pricing">pricing</a>
+      <a href="#faq">faq</a>
+    </nav>
+    <a href="#run" class="btn btn-primary">run audit</a>
+  </div>
+</header>
+
+<main>
+
+<section class="hero wrap">
+  <div class="tag"><span class="blink"></span>agent online · 12,418 fixes shipped this week</div>
+  <h1>12 issues found.<br><span class="crit">4 critical.</span> <span class="ok">fix now.</span></h1>
+  <p class="sub">the seo agent that doesn't write reports. it ships fixes.</p>
+
+  <div class="term" id="run">
+    <div class="term-bar">
+      <span></span><span></span><span></span>
+      <div class="title">autoaudit ~ live preview</div>
+    </div>
+    <div class="term-body">
+      <div class="hd">$ autoaudit scan acme.co --depth=full</div>
+      <div class="row"><span class="lbl">[1]</span><span class="crit">CRIT</span><span>missing canonical on 47 product pages</span><span class="fix">→ auto-fix ready</span></div>
+      <div class="row"><span class="lbl">[2]</span><span class="crit">CRIT</span><span>render-blocking JS · LCP 4.8s</span><span class="fix">→ auto-fix ready</span></div>
+      <div class="row"><span class="lbl">[3]</span><span class="crit">CRIT</span><span>h1 missing · /pricing, /about, /blog</span><span class="fix">→ auto-fix ready</span></div>
+      <div class="row"><span class="lbl">[4]</span><span class="warn">WARN</span><span>thin content on 8 category pages</span><span class="fix">→ draft ready</span></div>
+      <div class="row"><span class="lbl">...</span><span style="color:var(--dim)">8 more</span></div>
+      <div class="done">✓ scan complete in 27.4s · ready to ship</div>
+    </div>
+    <form class="term-input" onsubmit="event.preventDefault();this.querySelector('button').textContent='scanning…'">
+      <span class="prompt">$</span>
+      <input type="url" placeholder="paste your url — https://yoursite.com" required>
+      <button type="submit">run audit</button>
+    </form>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow">// reports vs fixes</div>
+    <h2>everyone else hands you homework. we hand you a diff.</h2>
+    <p class="lede">seo tools have spent ten years getting better at telling you what's broken. nobody has gotten better at fixing it. we did.</p>
+
+    <div class="cmp">
+      <div class="card bad">
+        <h3>other tools</h3>
+        <ul>
+          <li>50-page pdf you'll skim once</li>
+          <li>211 "issues" sorted by severity, not impact</li>
+          <li>jargon: "canonicalize hreflang clusters"</li>
+          <li>you still need a developer</li>
+          <li>weekly email digest of unread digests</li>
+        </ul>
+      </div>
+      <div class="card good">
+        <h3>autoaudit agent</h3>
+        <ul>
+          <li>plain english. impact-ranked. 1 page.</li>
+          <li>fixes pushed to your cms as drafts or live</li>
+          <li>re-audits on every deploy automatically</li>
+          <li>pings only when something actually moves rank</li>
+          <li>tracks 3 competitors. tells you what they changed.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="eyebrow">// how the agent works</div>
+    <h2>three steps. no dashboards to learn.</h2>
+    <p class="lede">paste a url. the agent does the rest. you approve or it ships — your call.</p>
+
+    <div class="steps">
+      <div class="step">
+        <span class="n">01 / crawl</span>
+        <h3>full site, 30 seconds</h3>
+        <p>headless browser. real chrome. js-rendered html. structured data. core web vitals. competitor delta.</p>
+      </div>
+      <div class="step">
+        <span class="n">02 / rank</span>
+        <h3>by impact, not severity</h3>
+        <p>a missing h1 on /pricing matters. a missing alt-tag on a 2019 blog post doesn't. we score by traffic-at-risk.</p>
+      </div>
+      <div class="step">
+        <span class="n">03 / execute</span>
+        <h3>via your cms</h3>
+        <p>wordpress, webflow, shopify. fixes land as drafts you approve, or auto-ship on the rules you set.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="eyebrow">// pricing</div>
+    <h2>two tiers. no seats. no contract.</h2>
+    <p class="lede">try the one-shot. upgrade when you stop wanting to do this manually.</p>
+
+    <div class="prices">
+      <div class="price">
+        <div class="name">one-shot</div>
+        <div class="amt">$5<span> / site</span></div>
+        <p class="desc">single audit. one site. plain-english fix list, impact-ranked, delivered in under 5 minutes.</p>
+        <ul>
+          <li>full technical + on-page audit</li>
+          <li>impact-ranked fix list</li>
+          <li>copy-paste fixes for non-devs</li>
+          <li>competitor snapshot (1 competitor)</li>
+        </ul>
+        <a href="#run" class="btn">run one-shot →</a>
+      </div>
+      <div class="price feat">
+        <div class="badge">recommended</div>
+        <div class="name">always-on agent</div>
+        <div class="amt">$29<span> / month</span></div>
+        <p class="desc">the agent watches your site, fixes what it can, and only pings you when something actually matters.</p>
+        <ul>
+          <li>everything in one-shot, unlimited runs</li>
+          <li>re-audits on every deploy</li>
+          <li>auto-fixes via wordpress / webflow / shopify</li>
+          <li>3 competitors tracked in real-time</li>
+          <li>signal-only alerts (no noise)</li>
+          <li>cancel any time, one click</li>
+        </ul>
+        <a href="#run" class="btn btn-primary">start always-on →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="eyebrow">// faq</div>
+    <h2>the obvious objections.</h2>
+    <div style="margin-top:32px">
+      <details>
+        <summary>does it actually fix things or just suggest fixes?</summary>
+        <p>actually fixes. on wordpress, webflow, and shopify we push changes via the official api — meta tags, canonicals, alt text, schema, h-tag structure, redirects, image compression, robots.txt. fixes land as drafts by default. flip a toggle and we auto-ship within rules you set.</p>
+      </details>
+      <details>
+        <summary>what cmss are supported?</summary>
+        <p>wordpress, webflow, shopify today. ghost and framer in beta. for anything else, you get the fix list with copy-paste-ready code blocks. custom stacks: we have a github action that opens prs.</p>
+      </details>
+      <details>
+        <summary>can i cancel anytime?</summary>
+        <p>yes. one click in settings. no email required, no exit interview, no "are you sure" three times. cancel mid-month and you keep access through the period.</p>
+      </details>
+      <details>
+        <summary>will it break my site?</summary>
+        <p>every fix is reversible with one click. we keep a diff log. dangerous changes (redirects, robots.txt) require explicit approval even on auto-ship. we've shipped 400k+ fixes and reverted 0.03% of them.</p>
+      </details>
+      <details>
+        <summary>is this just gpt with extra steps?</summary>
+        <p>no. the crawler is ours. the impact-ranking model is trained on 2 years of rank-correlated fix data. llms write the plain-english explanations and draft content — they don't decide what to fix.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <div class="eyebrow">// ready</div>
+    <h2>paste a url. see what's broken. ship the fix.</h2>
+    <div class="term">
+      <div class="term-bar">
+        <span></span><span></span><span></span>
+        <div class="title">autoaudit ~ new session</div>
+      </div>
+      <form class="term-input" onsubmit="event.preventDefault();this.querySelector('button').textContent='scanning…'">
+        <span class="prompt">$</span>
+        <input type="url" placeholder="https://yoursite.com" required>
+        <button type="submit">run audit</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <div>autoaudit agent · the seo tool that ships fixes.</div>
+  <div>© <span id="y">2025</span> autoaudit, inc.</div>
+</footer>
+
+<script>document.getElementById('y').textContent=new Date().getFullYear()</script>
+</body>
+</html>
